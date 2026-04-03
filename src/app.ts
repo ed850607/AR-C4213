@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import { loadManifest, type AssemblyManifest } from './manifest';
 
-type Phase = 'compat' | 'calibration' | 'assembly';
+type Phase = 'compat' | 'pickMode' | 'calibration' | 'assembly';
 
 const GHOST_OPACITY = 0.32;
 const HIGHLIGHT_EMISSIVE = 0x4488ff;
@@ -23,6 +22,12 @@ export class App {
   private manifest!: AssemblyManifest;
   private stepMeshes: THREE.Object3D[] = [];
   private currentStepIndex = 0;
+  /** True while WebXR immersive-ar session is active: model is in world/local-floor space, not screen-fixed. */
+  private useWorldSpaceAR = false;
+  private onXRSessionEndBound = (): void => {
+    this.useWorldSpaceAR = false;
+    location.reload();
+  };
 
   constructor() {
     const v = document.getElementById('camera-feed');
@@ -50,15 +55,81 @@ export class App {
       return;
     }
 
-    await this.startCamera();
     this.initThree();
-    this.buildCalibrationModel();
-    this.phase = 'calibration';
-    this.renderCalibrationUI();
-    this.setupXRButton();
+    this.renderer.xr.setReferenceSpaceType('local-floor');
     this.renderer.setAnimationLoop(() => {
       this.renderer.render(this.scene, this.camera);
     });
+
+    const arSupported =
+      'xr' in navigator &&
+      navigator.xr !== undefined &&
+      (await navigator.xr.isSessionSupported('immersive-ar'));
+
+    if (arSupported) {
+      this.phase = 'pickMode';
+      this.showModePicker();
+    } else {
+      await this.startScreenPreviewMode();
+    }
+  }
+
+  private showModePicker(): void {
+    this.uiRoot.innerHTML = `
+      <div class="panel card">
+        <div class="badge">选择模式</div>
+        <h1>如何显示虚拟模型</h1>
+        <p><strong>AR 空间模式（推荐）</strong>：模型固定在您所在环境的坐标系里（约在身体前方），您可以<strong>移动手机</strong>从四周查看，就像真实物体摆在那里。</p>
+        <p><strong>屏幕叠加</strong>：摄像头当背景，模型像贴在屏幕上，适合不支持 AR 或先快速预览。</p>
+        <div class="row" style="flex-direction:column;align-items:stretch">
+          <button type="button" id="btn-mode-ar">AR 空间模式</button>
+          <button type="button" id="btn-mode-screen" class="secondary">屏幕叠加</button>
+        </div>
+      </div>`;
+    document.getElementById('btn-mode-ar')?.addEventListener('click', () => void this.enterImmersiveAR());
+    document.getElementById('btn-mode-screen')?.addEventListener('click', () => void this.startScreenPreviewMode());
+  }
+
+  private async enterImmersiveAR(): Promise<void> {
+    if (!navigator.xr) return;
+    try {
+      let session: XRSession;
+      try {
+        session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['local-floor'],
+        });
+      } catch {
+        session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['local'],
+        });
+      }
+      await this.renderer.xr.setSession(session);
+      this.useWorldSpaceAR = true;
+      this.video.pause();
+      this.video.style.display = 'none';
+
+      // World-fixed content in local(-floor) space: ~1 m height, ~1.6 m in front of session origin
+      this.rootGroup.position.set(0, 1.0, -1.6);
+      this.rootGroup.quaternion.identity();
+
+      this.buildCalibrationModel(true);
+      this.phase = 'calibration';
+      this.renderCalibrationUI(true);
+      this.renderer.xr.addEventListener('sessionend', this.onXRSessionEndBound);
+    } catch (e) {
+      console.error(e);
+      this.showCompat('AR 无法启动', '可尝试换 Chrome（Android）或改用「屏幕叠加」刷新页面。', true);
+    }
+  }
+
+  private async startScreenPreviewMode(): Promise<void> {
+    await this.startCamera();
+    this.useWorldSpaceAR = false;
+    this.rootGroup.position.set(0, 0, 0);
+    this.rootGroup.quaternion.identity();
+    this.buildCalibrationModel(false);
+    this.phase = 'calibration';
+    this.renderCalibrationUI(false);
   }
 
   private checkCapabilities(): boolean {
@@ -150,6 +221,7 @@ export class App {
   }
 
   private onResize(): void {
+    if (this.renderer.xr.isPresenting) return;
     const w = window.innerWidth;
     const h = window.innerHeight;
     this.camera.aspect = w / h;
@@ -157,7 +229,7 @@ export class App {
     this.renderer.setSize(w, h);
   }
 
-  private buildCalibrationModel(): void {
+  private buildCalibrationModel(worldAR: boolean): void {
     const group = new THREE.Group();
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(0.5, 0.35, 0.22),
@@ -175,7 +247,11 @@ export class App {
     );
     edges.position.y = 0.175;
     group.add(edges);
-    group.position.set(0, -0.15, -0.6);
+    if (worldAR) {
+      group.position.set(0, 0, 0);
+    } else {
+      group.position.set(0, -0.15, -0.6);
+    }
     this.calibrationMesh = group;
     this.rootGroup.add(group);
 
@@ -184,16 +260,18 @@ export class App {
     this.dragControls = dc;
   }
 
-  private renderCalibrationUI(): void {
-    const xrHint =
-      'webxr' in navigator
-        ? '<p class="hint-xr" style="font-size:0.8rem;opacity:0.75">On supported phones you can also use <strong>Enter AR</strong> below.</p>'
-        : '';
+  private renderCalibrationUI(worldAR: boolean): void {
+    const xrHint = worldAR
+      ? '<p class="hint-xr" style="font-size:0.8rem;opacity:0.75">退出 AR 会刷新页面。可将手机绕模型走动查看。</p>'
+      : '';
+    const intro = worldAR
+      ? '<p>模型已放在<strong>空间固定位置</strong>（约在前方）。请<strong>移动手机</strong>从各角度查看；需要微调时，在方块上拖动，或用旋转/缩放按钮。</p>'
+      : '<p>在画面上<strong>直接拖动灰色方块</strong>移动位置。需要微调时用下面按钮旋转或缩放。</p>';
     this.uiRoot.innerHTML = `
       <div class="panel card">
         <div class="badge">步骤 0 — 摆放</div>
         <h1>对齐虚拟模型</h1>
-        <p>在画面上<strong>直接拖动灰色方块</strong>来移动位置（比小箭头更好点）。需要微调时用下面按钮旋转或缩放。</p>
+        ${intro}
         <div class="toolbar" id="calib-tools">
           <button type="button" id="btn-rot-ccw" class="secondary">左转</button>
           <button type="button" id="btn-rot-cw" class="secondary">右转</button>
@@ -231,22 +309,6 @@ export class App {
     document.getElementById('btn-lock')?.addEventListener('click', () => this.lockAndStartAssembly());
   }
 
-  private setupXRButton(): void {
-    if (!('xr' in navigator) || !navigator.xr) return;
-    navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-      if (!supported) return;
-      let host = document.getElementById('ar-button-container');
-      if (!host) {
-        host = document.createElement('div');
-        host.id = 'ar-button-container';
-        document.body.appendChild(host);
-      }
-      host.innerHTML = '';
-      const link = ARButton.createButton(this.renderer);
-      host.appendChild(link);
-    });
-  }
-
   private lockAndStartAssembly(): void {
     if (this.phase !== 'calibration' || !this.dragControls || !this.calibrationMesh) return;
     this.dragControls.dispose();
@@ -279,6 +341,9 @@ export class App {
         obj = this.makePlaceholderMesh(i, steps.length);
       }
       obj.userData.stepIndex = i;
+      if (this.useWorldSpaceAR) {
+        obj.position.set(0, 0.15, 0);
+      }
       this.rootGroup.add(obj);
       this.stepMeshes.push(obj);
     }
@@ -392,6 +457,7 @@ export class App {
   }
 
   dispose(): void {
+    this.renderer.xr.removeEventListener('sessionend', this.onXRSessionEndBound);
     this.renderer.setAnimationLoop(null);
     this.renderer.dispose();
   }
