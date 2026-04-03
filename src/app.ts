@@ -182,7 +182,7 @@ export class App {
     const tc = new TransformControls(this.camera, this.canvas);
     tc.attach(group);
     tc.setMode('translate');
-    this.scene.add(tc);
+    this.scene.add(tc as unknown as THREE.Object3D);
     this.transformControls = tc;
   }
 
@@ -237,7 +237,7 @@ export class App {
 
   private lockAndStartAssembly(): void {
     if (this.phase !== 'calibration' || !this.transformControls || !this.calibrationMesh) return;
-    this.scene.remove(this.transformControls);
+    this.scene.remove(this.transformControls as unknown as THREE.Object3D);
     this.transformControls.dispose();
     this.transformControls = null;
     this.rootGroup.remove(this.calibrationMesh);
