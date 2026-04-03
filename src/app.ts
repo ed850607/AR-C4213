@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import { loadManifest, type AssemblyManifest } from './manifest';
@@ -19,7 +19,7 @@ export class App {
   private camera!: THREE.PerspectiveCamera;
   private rootGroup = new THREE.Group();
   private calibrationMesh: THREE.Object3D | null = null;
-  private transformControls: TransformControls | null = null;
+  private dragControls: DragControls | null = null;
   private manifest!: AssemblyManifest;
   private stepMeshes: THREE.Object3D[] = [];
   private currentStepIndex = 0;
@@ -179,11 +179,9 @@ export class App {
     this.calibrationMesh = group;
     this.rootGroup.add(group);
 
-    const tc = new TransformControls(this.camera, this.canvas);
-    tc.attach(group);
-    tc.setMode('translate');
-    this.scene.add(tc as unknown as THREE.Object3D);
-    this.transformControls = tc;
+    const dc = new DragControls([group], this.camera, this.canvas);
+    dc.rotateSpeed = 0;
+    this.dragControls = dc;
   }
 
   private renderCalibrationUI(): void {
@@ -193,27 +191,41 @@ export class App {
         : '';
     this.uiRoot.innerHTML = `
       <div class="panel card">
-        <div class="badge">Step 0 — Placement</div>
-        <h1>Align the product</h1>
-        <p>Drag the gizmo to move, rotate, or scale the model to match the final installed product. Choose a mode below.</p>
-        <div class="toolbar" id="tc-modes">
-          <button type="button" data-mode="translate" class="active">Move</button>
-          <button type="button" data-mode="rotate">Rotate</button>
-          <button type="button" data-mode="scale">Scale</button>
+        <div class="badge">步骤 0 — 摆放</div>
+        <h1>对齐虚拟模型</h1>
+        <p>在画面上<strong>直接拖动灰色方块</strong>来移动位置（比小箭头更好点）。需要微调时用下面按钮旋转或缩放。</p>
+        <div class="toolbar" id="calib-tools">
+          <button type="button" id="btn-rot-ccw" class="secondary">左转</button>
+          <button type="button" id="btn-rot-cw" class="secondary">右转</button>
+          <button type="button" id="btn-scale-down" class="secondary">缩小</button>
+          <button type="button" id="btn-scale-up" class="secondary">放大</button>
         </div>
         <div class="row">
-          <button type="button" id="btn-lock">Confirm placement</button>
+          <button type="button" id="btn-lock">确认摆放</button>
         </div>
         ${xrHint}
       </div>`;
 
-    document.querySelectorAll('#tc-modes button').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const mode = (btn as HTMLButtonElement).dataset.mode as 'translate' | 'rotate' | 'scale';
-        document.querySelectorAll('#tc-modes button').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.transformControls?.setMode(mode);
-      });
+    const mesh = this.calibrationMesh;
+    const rotStep = Math.PI / 12;
+    const scaleMul = 1.08;
+    document.getElementById('btn-rot-ccw')?.addEventListener('click', () => {
+      if (!mesh) return;
+      mesh.rotation.y += rotStep;
+    });
+    document.getElementById('btn-rot-cw')?.addEventListener('click', () => {
+      if (!mesh) return;
+      mesh.rotation.y -= rotStep;
+    });
+    document.getElementById('btn-scale-up')?.addEventListener('click', () => {
+      if (!mesh) return;
+      const s = Math.min(3, mesh.scale.x * scaleMul);
+      mesh.scale.setScalar(s);
+    });
+    document.getElementById('btn-scale-down')?.addEventListener('click', () => {
+      if (!mesh) return;
+      const s = Math.max(0.35, mesh.scale.x / scaleMul);
+      mesh.scale.setScalar(s);
     });
 
     document.getElementById('btn-lock')?.addEventListener('click', () => this.lockAndStartAssembly());
@@ -236,10 +248,9 @@ export class App {
   }
 
   private lockAndStartAssembly(): void {
-    if (this.phase !== 'calibration' || !this.transformControls || !this.calibrationMesh) return;
-    this.scene.remove(this.transformControls as unknown as THREE.Object3D);
-    this.transformControls.dispose();
-    this.transformControls = null;
+    if (this.phase !== 'calibration' || !this.dragControls || !this.calibrationMesh) return;
+    this.dragControls.dispose();
+    this.dragControls = null;
     this.rootGroup.remove(this.calibrationMesh);
     this.calibrationMesh = null;
 
