@@ -24,6 +24,8 @@ export class App {
   private currentStepIndex = 0;
   /** True while WebXR immersive-ar session is active: model is in world/local-floor space, not screen-fixed. */
   private useWorldSpaceAR = false;
+  /** True when we skipped mode picker because immersive-ar is unavailable (show explanation in screen mode). */
+  private noWebXRAutoScreen = false;
   private onXRSessionEndBound = (): void => {
     this.useWorldSpaceAR = false;
     location.reload();
@@ -70,6 +72,7 @@ export class App {
       this.phase = 'pickMode';
       this.showModePicker();
     } else {
+      this.noWebXRAutoScreen = true;
       await this.startScreenPreviewMode();
     }
   }
@@ -87,7 +90,10 @@ export class App {
         </div>
       </div>`;
     document.getElementById('btn-mode-ar')?.addEventListener('click', () => void this.enterImmersiveAR());
-    document.getElementById('btn-mode-screen')?.addEventListener('click', () => void this.startScreenPreviewMode());
+    document.getElementById('btn-mode-screen')?.addEventListener('click', () => {
+      this.noWebXRAutoScreen = false;
+      void this.startScreenPreviewMode();
+    });
   }
 
   private async enterImmersiveAR(): Promise<void> {
@@ -264,6 +270,10 @@ export class App {
     const xrHint = worldAR
       ? '<p class="hint-xr" style="font-size:0.8rem;opacity:0.75">退出 AR 会刷新页面。可将手机绕模型走动查看。</p>'
       : '';
+    const noWebXRBanner =
+      !worldAR && this.noWebXRAutoScreen
+        ? `<div class="notice-banner">当前浏览器<strong>未提供 WebXR 沉浸式 AR</strong>，因此没有「AR 空间模式」选项，已自动使用<strong>屏幕叠加</strong>。真空间固定模型需支持该能力的浏览器（例如部分 Android 上的 Chrome）。华为鸿蒙自带浏览器多数<strong>不支持</strong>，属正常情况。</div>`
+        : '';
     const intro = worldAR
       ? '<p>模型已放在<strong>空间固定位置</strong>（约在前方）。请<strong>移动手机</strong>从各角度查看；需要微调时，在方块上拖动，或用旋转/缩放按钮。</p>'
       : '<p>在画面上<strong>直接拖动灰色方块</strong>移动位置。需要微调时用下面按钮旋转或缩放。</p>';
@@ -271,6 +281,7 @@ export class App {
       <div class="panel card">
         <div class="badge">步骤 0 — 摆放</div>
         <h1>对齐虚拟模型</h1>
+        ${noWebXRBanner}
         ${intro}
         <div class="toolbar" id="calib-tools">
           <button type="button" id="btn-rot-ccw" class="secondary">左转</button>
