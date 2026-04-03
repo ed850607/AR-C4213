@@ -1,0 +1,145 @@
+{
+  "productName": "C4213安装说明书",
+  "assemblyModel": null,
+  "steps": [
+    {
+      "id": "step-1",
+      "title": "安装地面导向件 C4213-4",
+      "description": "将 C4213-4 放在地面对应位置，用木牙螺丝固定，保证与门洞中心线平行、位置准确。",
+      "measurements": [
+        "与门洞中心线距离：91 mm",
+        "与门框前缘距离：100 mm"
+      ],
+      "tools": [
+        "电钻/起子机",
+        "合适规格木牙螺丝批头",
+        "卷尺",
+        "铅笔或划线器",
+        "水平尺（建议）"
+      ],
+      "parts": [
+        "C4213-4 ×1",
+        "木牙螺丝 ×6"
+      ],
+      "partModel": "models/step-1.glb",
+      "animationClip": null
+    },
+    {
+      "id": "step-2",
+      "title": "安装门扇下方件 C4213-3",
+      "description": "将 C4213-3 贴合在门扇下方对应位置，用木牙螺丝固定，确保与地面导向件 C4213-4 在同一条直线上。",
+      "measurements": [
+        "距门扇下边缘距离：16 mm",
+        "距门扇侧边距离：90 mm"
+      ],
+      "tools": [
+        "电钻/起子机",
+        "合适规格木牙螺丝批头",
+        "卷尺",
+        "角尺"
+      ],
+      "parts": [
+        "C4213-3 ×1",
+        "木牙螺丝 ×6"
+      ],
+      "partModel": "models/step-2.glb",
+      "animationClip": null
+    },
+    {
+      "id": "step-3",
+      "title": "安装门扇上方件 C4213-2",
+      "description": "将 C4213-2 用木牙螺丝安装在门扇上方对应位置，使其与下方的 C4213-3 垂直对齐。",
+      "measurements": [
+        "距门扇上边缘距离：16 mm",
+        "与 C4213-3 垂直投影对齐"
+      ],
+      "tools": [
+        "电钻/起子机",
+        "合适规格木牙螺丝批头",
+        "卷尺",
+        "角尺"
+      ],
+      "parts": [
+        "C4213-2 ×1",
+        "木牙螺丝 ×4"
+      ],
+      "partModel": "models/step-3.glb",
+      "animationClip": null
+    },
+    {
+      "id": "step-4",
+      "title": "在门扇上方钻定位孔",
+      "description": "将直径 12 mm 的钻头从 C4213-2 的孔位中心定位，对门扇上方对应位置钻孔，深度约 20 mm，避免穿透门扇。",
+      "measurements": [
+        "钻头直径：12 mm",
+        "钻孔深度：约 20 mm"
+      ],
+      "tools": [
+        "电钻",
+        "直径 12 mm 木工钻头",
+        "深度限位或胶带标记"
+      ],
+      "parts": [
+        "门扇（已安装 C4213-2）"
+      ],
+      "partModel": "models/step-4.glb",
+      "animationClip": null
+    },
+    {
+      "id": "step-5",
+      "title": "将 C4213-1 插入孔内",
+      "description": "将 C4213-1 垂直插入刚刚钻好的孔位中，必要时轻敲，使其完全到位且不松动。",
+      "measurements": [
+        "插入深度：接近 20 mm，顶部与门面齐平或略低"
+      ],
+      "tools": [
+        "橡胶锤（如需轻敲就位）"
+      ],
+      "parts": [
+        "C4213-1 ×1"
+      ],
+      "partModel": "models/step-5.glb",
+      "animationClip": null
+    },
+    {
+      "id": "step-6",
+      "title": "挂装门扇到地面导向件",
+      "description": "将门扇轻微倾斜，使下方的 C4213-3 对准地面上的 C4213-4 插入组装，随后缓慢将门扇立起，使门扇大致垂直于地面至接近最终位置。",
+      "measurements": [
+        "门扇与地面的夹角：接近 90°"
+      ],
+      "tools": [
+        "两人配合搬运（建议）",
+        "水平尺（用于检查门扇垂直度）"
+      ],
+      "parts": [
+        "C4213-3（已安装在门扇下方）",
+        "C4213-4（已安装在地面）",
+        "门扇组件"
+      ],
+      "partModel": "models/step-6.glb",
+      "animationClip": null
+    },
+    {
+      "id": "step-7",
+      "title": "固定 C4213-1 与门框（完成安装）",
+      "description": "将 C4213-1 上升顶紧门框对应位置后，用木牙螺丝固定。确认门启闭顺畅、无异常摩擦，产品安装完成。",
+      "measurements": [
+        "C4213-1 与门框贴合无明显缝隙",
+        "门扇与地面/门框间隙：21 mm"
+      ],
+      "tools": [
+        "电钻/起子机",
+        "合适规格木牙螺丝批头",
+        "水平尺"
+      ],
+      "parts": [
+        "C4213-1 ×1",
+        "木牙螺丝 ×5",
+        "门框"
+      ],
+      "partModel": "models/step-7.glb",
+      "animationClip": null
+    }
+  ]
+}

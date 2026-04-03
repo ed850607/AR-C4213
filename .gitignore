@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.env.*
+# 本地参考素材，不参与网站构建
+网络下载模型/
+# 网站只发布 .glb，SolidWorks 源文件体积大
+*.SLDASM
+*.SLDPRT
